@@ -1,5 +1,5 @@
 type file = {
-    path : string option;
+    path : string option list;
     length : int option;
 }
 
@@ -55,8 +55,10 @@ let rec files_from_list list files =
     match list with
     | [] -> files
     | hd::tl ->
-            let path = apply (Bencode.as_string) (match_field hd "path")
+            let p = apply (Bencode.as_list) (match_field hd "path")
             and length = apply (Bencode.as_int) (match_field hd "length") in
+            let path = 
+                List.map (fun s -> Bencode.as_string s) (none_to p []) in
             let file = { path; length } in
             files_from_list tl files@[file]
 
@@ -83,6 +85,12 @@ let name torrent =
 
 
 let print t = 
-    Printf.printf "%s\n" (none_to t.announce "");
-    Printf.printf "%s\n" (none_to t.name "");
-    Printf.printf "%d\n" (none_to t.piece_length 0);
+    Printf.printf "announce : %s\n" (none_to t.announce "");
+    Printf.printf "name :%s\n" (none_to t.name "");
+    Printf.printf "pieces length : %d\n" (none_to t.piece_length 0);
+    List.iter
+        (fun file -> 
+            Printf.printf "file : %s %d\n" 
+            (String.concat "/" (List.map (fun s -> none_to s "") file.path ))
+            (none_to file.length 0))
+        t.files

@@ -10,7 +10,8 @@ let url = Uri.make
 (* we ignore the error code. *)
   
 let _ =
-  let output = Sys.argv.(1) in
+  let url = Uri.of_string Sys.argv.(1)
+  and output = Sys.argv.(2) in
   let p =
     Client.get url >>= fun (r,b) ->
     match r.Cohttp.Response.status with
