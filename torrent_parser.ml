@@ -20,7 +20,7 @@ let _ =
        Lwt_io.write oc s >>= fun () ->
        Lwt_io.close oc >>= fun () ->
            let torrent = Torrent.create_from_file output in
-           Printf.printf "torrent name = %s\n" (Torrent.name torrent);
+           Torrent.print torrent;
            return ()
     | _ ->
        let open Cohttp.Code in
