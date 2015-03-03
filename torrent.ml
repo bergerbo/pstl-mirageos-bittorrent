@@ -72,7 +72,7 @@ let create_from_file filepath =
     and piece_length = apply (Bencode.as_int) (match_field d "piece length")
     and pieces = apply (Bencode.as_string) (match_field d "pieces") 
     and decoded_files = apply (Bencode.as_list) (match_field d "files") in
-    let files = 
+    let files =
         files_from_list (none_to decoded_files []) [] in
     { announce; name;
       piece_length; files;  pieces }

@@ -1,0 +1,2 @@
+ocamlbuild -classic-display -use-ocamlfind -pkgs lwt.syntax,mirage-console.unix,mirage-types.lwt -tags "syntax(camlp4o),annot,bin_annot,strict_sequence,principal" -tag-line "<static*.*>: -syntax(camlp4o)" -cflag -g -lflags -g,-linkpkg main.native
+ln -nfs _build/main.native mir-Foo.Main
