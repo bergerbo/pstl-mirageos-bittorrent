@@ -5,6 +5,7 @@ type file = {
 
 
 type t = {
+    encoded : string;
     announce : string option;
     name : string option;
     piece_length : int option;
@@ -66,7 +67,7 @@ let rec files_from_list list files =
 
 let create_from_file filepath =
     let d = Bencode.decode (`File_path  filepath ) in
-    Printf.printf "%s\n" (Bencode.pretty_print d);
+    let encoded = Bencode.encode_to_string d in
     let announce = apply (Bencode.as_string) (match_field d "announce")
     and name = apply (Bencode.as_string) (match_field d "name")
     and piece_length = apply (Bencode.as_int) (match_field d "piece length")
@@ -74,15 +75,16 @@ let create_from_file filepath =
     and decoded_files = apply (Bencode.as_list) (match_field d "files") in
     let files =
         files_from_list (none_to decoded_files []) [] in
-    { announce; name;
+    { encoded; announce; name;
       piece_length; files;  pieces }
-
 
 let name torrent =
     match torrent.name with
     | None -> ""
     | Some str -> str
 
+let encoded torrent =
+    torrent.encoded
 
 let print t = 
     Printf.printf "announce : %s\n" (none_to t.announce "");

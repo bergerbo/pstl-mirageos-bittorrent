@@ -1,8 +1,0 @@
-Fatal error: exception Failure("net_tap0")
-Raised at file "src/core/lwt.ml", line 788, characters 22-23
-Called from file "src/unix/lwt_main.ml", line 34, characters 8-18
-Called from file "main.ml", line 31, characters 2-28
-make: *** [run] Error 2
-lag -g -lflags -g,-linkpkg main.native
-ln -nfs _build/main.native mir-ping
-./mir-ping

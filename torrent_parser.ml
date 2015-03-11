@@ -1,5 +1,7 @@
 open Lwt
 open Cohttp_lwt_unix
+open Printf
+open V1_LWT
 
 let url = Uri.make 
   ~scheme:"http" 
@@ -9,24 +11,44 @@ let url = Uri.make
 
 (* we ignore the error code. *)
   
-let _ =
-  let url = Uri.of_string Sys.argv.(1)
-  and output = Sys.argv.(2) in
-  let p =
-    Client.get url >>= fun (r,b) ->
-    match r.Cohttp.Response.status with
-    | `OK | `Code 200 ->
-       Cohttp_lwt_body.to_string b >>= fun s ->
-       Lwt_io.open_file Lwt_io.Output output >>= fun oc ->
-       Lwt_io.write oc s >>= fun () ->
-       Lwt_io.close oc >>= fun () ->
-           let torrent = Torrent.create_from_file output in
-           Torrent.print torrent;
-           return ()
-    | _ ->
-       let open Cohttp.Code in
-       let open Printf in
-       let s = string_of_status r.Cohttp.Response.status in
-       Printf.eprintf "log: %s\n" s;
-       return ()
-  in Lwt_main.run p
+module Main (C: CONSOLE) (B: BLOCK) = struct 
+
+    let write c s block =
+        let nbp = ((String.length s) / 4096) + 1 in
+        let page= Io_page.(to_cstruct (get nbp)) in
+        for i = 0 to (String.length s)  - 1 do
+            C.log c (sprintf "%d  %c \n" i s.[i]);
+            Cstruct.set_char page i s.[i]
+        done;
+        (B.write block 0L [page]) >>= function
+        | `Error e -> fail (Failure ("Error writing"))
+        | `Ok _ -> return ()
+
+    let start c b = 
+        let torrent = Torrent.create_from_file "./test.torrent" in
+        C.log c "torrent created";
+        write c (Torrent.encoded torrent) b 
+    
+    (*
+    let get_torrent = 
+        let output = "test.torrent" in
+        let p =
+        Client.get url >>= fun (r,b) ->
+        match r.Cohttp.Response.status with
+            | `OK | `Code 200 ->
+            Cohttp_lwt_body.to_string b >>= fun s ->
+            Lwt_io.open_file Lwt_io.Output output >>= fun oc ->
+            Lwt_io.write oc s >>= fun () ->
+            Lwt_io.close oc >>= fun () ->
+            let torrent = Torrent.create_from_file output in
+            Torrent.print torrent;
+            return ()
+            | _ ->
+            let open Cohttp.Code in
+            let open Printf in
+            let s = string_of_status r.Cohttp.Response.status in
+            Printf.eprintf "log: %s\n" s;
+            return ()
+        in Lwt_main.run p
+    *)
+end
