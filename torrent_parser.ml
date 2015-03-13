@@ -11,26 +11,30 @@ let url = Uri.make
 
 (* we ignore the error code. *)
   
-module Main (C: CONSOLE) (B: BLOCK) = struct 
+module Main (C: CONSOLE) (B: BLOCK) = struct
 
     let write c s block =
-        let nbp = ((String.length s) / 4096) + 1 in
-        let page= Io_page.(to_cstruct (get nbp)) in
+        B.get_info block >>= fun info ->
+        let nbp = ((String.length s) / info.sector_size ) + 1 in
+        let page = Io_page.(to_cstruct (get nbp)) in
+        let page = Cstruct.sub page 0 (nbp * info.sector_size) in
         for i = 0 to (String.length s)  - 1 do
             C.log c (sprintf "%d  %c \n" i s.[i]);
             Cstruct.set_char page i s.[i]
         done;
+        C.log c (sprintf "%d\n" (String.length s));
         (B.write block 0L [page]) >>= function
         | `Error e -> fail (Failure ("Error writing"))
-        | `Ok _ -> return ()
+        | `Ok _ -> C.log c "Done"; return ()
 
-    let start c b = 
+    let start c b =
         let torrent = Torrent.create_from_file "./test.torrent" in
         C.log c "torrent created";
-        write c (Torrent.encoded torrent) b 
+        write c (Torrent.encoded torrent) b >>
+        return ()
     
     (*
-    let get_torrent = 
+    let get_torrent =
         let output = "test.torrent" in
         let p =
         Client.get url >>= fun (r,b) ->
