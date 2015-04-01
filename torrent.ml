@@ -64,9 +64,7 @@ let rec files_from_list list files =
             files_from_list tl files@[file]
 
 
-
-let create_from_file filepath =
-    let d = Bencode.decode (`File_path  filepath ) in
+let create_from_decoded d =
     let encoded = Bencode.encode_to_string d in
     let announce = apply (Bencode.as_string) (match_field d "announce")
     and name = apply (Bencode.as_string) (match_field d "name")
@@ -77,6 +75,14 @@ let create_from_file filepath =
         files_from_list (none_to decoded_files []) [] in
     { encoded; announce; name;
       piece_length; files;  pieces }
+
+let create_from_file filepath =
+    let d = Bencode.decode (`File_path  filepath ) in
+    create_from_decoded d
+
+let create_from_data data =
+    let d = Bencode.decode (`String  data ) in
+    create_from_decoded d
 
 let name torrent =
     match torrent.name with

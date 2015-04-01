@@ -11,28 +11,78 @@ let url = Uri.make
 
 (* we ignore the error code. *)
   
-module Main (C: CONSOLE) (B: BLOCK) = struct
+module Main (C: CONSOLE)
+            (F: sig include FS with type
+                page_aligned_buffer = Cstruct.t
+            end)
+            (CON: Conduit_mirage.S )
+            = struct
 
-    let write c s block =
-        B.get_info block >>= fun info ->
-        let nbp = ((String.length s) / info.sector_size ) + 1 in
-        let page = Io_page.(to_cstruct (get nbp)) in
-        let page = Cstruct.sub page 0 (nbp * info.sector_size) in
-        for i = 0 to (String.length s)  - 1 do
-            C.log c (sprintf "%d  %c \n" i s.[i]);
-            Cstruct.set_char page i s.[i]
+    module HTTP = HTTP.Make(CON)
+
+    type suite = {
+        c : C.t;
+        fs : F.t;
+        con : CON.ctx;
+    }
+
+    let write_torrent suite s path =
+        let fs = suite.fs
+        and c = suite.c in
+        F.create fs path >>= function
+        | `Error e -> fail (Failure ("Error writing"))
+        | `Ok _ ->
+        let bytes = Cstruct.create (String.length s) in
+        for i = 0 to (String.length s) - 1 do
+            C.log c (sprintf "%d %c \n" i s.[i]);
+            Cstruct.set_char bytes i s.[i]
         done;
         C.log c (sprintf "%d\n" (String.length s));
-        (B.write block 0L [page]) >>= function
+        (F.write fs path 0 bytes) >>= function
         | `Error e -> fail (Failure ("Error writing"))
         | `Ok _ -> C.log c "Done"; return ()
 
-    let start c b =
-        let torrent = Torrent.create_from_file "./test.torrent" in
-        C.log c "torrent created";
-        write c (Torrent.encoded torrent) b >>
+    let open_torrent suite path =
+        let fs = suite.fs in
+        F.size fs path >>= function
+        | `Error e -> fail(Failure ("Error getting size"))
+        | `Ok size ->
+        F.read fs path 0 (Int64.to_int size) >>= function
+        | `Error e -> fail(Failure ("Error reading"))
+        | `Ok pages ->
+        let data = Cstruct.copyv pages in
+        return (Torrent.create_from_data data)
+
+
+    let get_torrent suite url path=
+        let fs = suite.fs
+        and c = suite.c in
+        let p =
+        HTTP.Client.get url >>= fun (r,b) ->
+        match r.Cohttp.Response.status with
+            | `OK | `Code 200 ->
+            Cohttp_lwt_body.to_string b >>= fun s ->
+            (*write_torrent suite s path >>
+            let torrent = Torrent.create_from_data s in
+            Torrent.print torrent;*)
+            return ()
+            | _ ->
+            let open Cohttp.Code in
+            let open Printf in
+            let s = string_of_status r.Cohttp.Response.status in
+            Printf.eprintf "log: %s\n" s;
+            return ()
+        in p 
+
+    let start c fs con =
+        let suite = { c; fs; con} in 
+        F.mkdir fs "torrents" >>
+        let path = "torrents/test.torrent" in
+        get_torrent suite url path >>(*
+        open_torrent suite path >>= fun torrent ->
+        Torrent.print torrent;*)
         return ()
-    
+
     (*
     let get_torrent =
         let output = "test.torrent" in
