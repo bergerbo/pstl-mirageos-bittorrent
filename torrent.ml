@@ -8,6 +8,7 @@ type t = {
     encoded : string;
     announce : string option;
     name : string option;
+    length : int option;
     piece_length : int option;
     files : file list;
     pieces : string option;
@@ -68,12 +69,13 @@ let create_from_decoded d =
     let encoded = Bencode.encode_to_string d in
     let announce = apply (Bencode.as_string) (match_field d "announce")
     and name = apply (Bencode.as_string) (match_field d "name")
+    and length = apply (Bencode.as_int) (match_field d "length")
     and piece_length = apply (Bencode.as_int) (match_field d "piece length")
     and pieces = apply (Bencode.as_string) (match_field d "pieces") 
     and decoded_files = apply (Bencode.as_list) (match_field d "files") in
     let files =
         files_from_list (none_to decoded_files []) [] in
-    { encoded; announce; name;
+    { encoded; announce; name; length;
       piece_length; files;  pieces }
 
 let create_from_file filepath =
@@ -88,6 +90,30 @@ let name torrent =
     match torrent.name with
     | None -> ""
     | Some str -> str
+
+let announce torrent =
+    match torrent.announce with
+    | None -> ""
+    | Some str -> str
+
+let encoded_info torrent =
+    let d = Bencode.decode (`String torrent.encoded) in
+    let info = match_field d "info" in
+    match info with 
+    | None -> ""
+    | Some d -> Bencode.encode_to_string d
+
+let length torrent =
+    let rec files_length (f: file list) length =
+        match f with
+        | [] -> length
+        | hd::tl ->
+                let l = none_to hd.length 0 in
+                files_length tl (length + l)
+    in
+    match torrent.length with
+    | None -> files_length torrent.files 0
+    | Some l -> l
 
 let encoded torrent =
     torrent.encoded

@@ -25,6 +25,8 @@ let main =
 let () =
     add_to_ocamlfind_libraries ["mirage-http"];
     add_to_opam_packages ["mirage-http"];
+    add_to_ocamlfind_libraries ["sha"];
+    add_to_opam_packages ["sha"];
     let sv4 = stack default_console in
     let res_dns = resolver_dns sv4 in
     let conduit = conduit_direct sv4 in

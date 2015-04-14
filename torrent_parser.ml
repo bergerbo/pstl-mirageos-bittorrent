@@ -8,10 +8,12 @@ module Main (C: CONSOLE)
             (F: sig include FS with type
                 page_aligned_buffer = Cstruct.t
             end)
-            (RES:Resolver_lwt.S)
-            (CON: Conduit_mirage.S ) = struct
+            (RES: Resolver_lwt.S)
+            (CON: Conduit_mirage.S) = struct
 
-    module HTTP = HTTP.Make(CON)
+    module HTTP = HTTP.Make (CON)
+    module DL = Download.Make (CON)(RES)(F)
+
 
     type suite = {
         c : C.t;
@@ -19,6 +21,7 @@ module Main (C: CONSOLE)
         res : Resolver_lwt.t;
         ctx : CON.ctx;
     }
+
     let url = Uri.of_string
 "http://cdimage.debian.org/debian-cd/current-live/amd64/bt-hybrid/debian-live-7.8.0-amd64-standard.iso.torrent"
 
@@ -49,9 +52,7 @@ module Main (C: CONSOLE)
 
 
     let get_torrent suite url path=
-        let fs = suite.fs
-        and c = suite.c 
-        and ctx = suite.ctx 
+        let ctx = suite.ctx 
         and resolver = suite.res in
         let ctx = { HTTP.Net_IO.resolver; ctx} in
         HTTP.Client.get ~ctx  url >>= fun (r,b) ->
@@ -76,6 +77,9 @@ module Main (C: CONSOLE)
         get_torrent suite url path >>
         open_torrent suite path >>= fun torrent ->
         Torrent.print torrent;
+        let download = DL.create torrent in
+        DL.start ctx res download;
+        C.log c "Download created";
         return ()
 
     (*
